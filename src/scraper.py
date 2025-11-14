@@ -105,6 +105,59 @@ class VisaBulletinScraper:
             logger.error(f"Error fetching bulletin content: {e}")
             return None
 
+    def get_bulletin_urls(self) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Get both current and upcoming bulletin URLs.
+
+        Returns:
+            Tuple[Optional[str], Optional[str]]: (current_url, upcoming_url)
+            Either can be None if not available.
+        """
+        try:
+            logger.info(f"Fetching main page: {self.base_url}")
+            response = self.session.get(self.base_url, timeout=30)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.content, 'html.parser')
+            recent_bulletins = soup.find('ul', id='recent_bulletins')
+
+            if not recent_bulletins:
+                logger.warning("Could not find <ul id='recent_bulletins'>")
+                return None, None
+
+            current_items = recent_bulletins.find_all('li', class_='current')
+
+            if not current_items:
+                logger.warning("No <li class='current'> items found")
+                return None, None
+
+            logger.info(f"Found {len(current_items)} current bulletin items")
+
+            current_url = None
+            upcoming_url = None
+
+            # First item = current month
+            if len(current_items) >= 1:
+                link = current_items[0].find('a', href=True)
+                if link:
+                    current_url = urljoin(self.base_url, link['href'])
+                    link_text = link.get_text().strip()
+                    logger.info(f"Current month bulletin: '{link_text}' at {current_url}")
+
+            # Second item = upcoming month
+            if len(current_items) >= 2:
+                link = current_items[1].find('a', href=True)
+                if link:
+                    upcoming_url = urljoin(self.base_url, link['href'])
+                    link_text = link.get_text().strip()
+                    logger.info(f"Upcoming month bulletin: '{link_text}' at {upcoming_url}")
+
+            return current_url, upcoming_url
+
+        except requests.RequestException as e:
+            logger.error(f"Error fetching main page: {e}")
+            return None, None
+
     def scrape_latest_bulletin(self) -> Optional[Tuple[str, str]]:
         """
         Scrape the latest upcoming visa bulletin.
@@ -121,3 +174,22 @@ class VisaBulletinScraper:
             return None
 
         return bulletin_url, content
+
+    def scrape_bulletin_by_url(self, url: str) -> Optional[Tuple[str, str]]:
+        """
+        Scrape a specific bulletin by URL.
+
+        Args:
+            url: URL of the bulletin to scrape
+
+        Returns:
+            Tuple[str, str]: (bulletin_url, html_content) or None if error
+        """
+        if not url:
+            return None
+
+        content = self.fetch_bulletin_content(url)
+        if not content:
+            return None
+
+        return url, content

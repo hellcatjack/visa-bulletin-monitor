@@ -84,6 +84,9 @@ class VisaBulletinOrchestrator:
         4. Compare with previous
         5. Send notification if changes detected
         6. Update storage
+
+        Special handling for first run: If no history exists, will scrape both current
+        and upcoming bulletins to enable comparison and notification on first run.
         """
         logger.info("=" * 60)
         logger.info("Starting scrape cycle")
@@ -94,6 +97,92 @@ class VisaBulletinOrchestrator:
             logger.info("Monthly scrape already completed. Skipping until next month.")
             return
 
+        # Check if this is the first run
+        previous_bulletin = self.storage.get_latest_bulletin()
+        is_first_run = previous_bulletin is None
+
+        if is_first_run:
+            logger.info("First run detected - will attempt to compare current and upcoming bulletins")
+            self._handle_first_run()
+        else:
+            self._handle_regular_run()
+
+        logger.info("Scrape cycle completed successfully")
+        logger.info("=" * 60)
+
+    def _handle_first_run(self):
+        """
+        Handle first run by scraping both current and upcoming bulletins for comparison.
+        """
+        # Step 1: Get both bulletin URLs
+        logger.info("Step 1: Getting bulletin URLs...")
+        current_url, upcoming_url = self.scraper.get_bulletin_urls()
+
+        if not current_url and not upcoming_url:
+            logger.error("Failed to get any bulletin URLs. Aborting cycle.")
+            return
+
+        # If we have both bulletins, compare them
+        if current_url and upcoming_url:
+            logger.info("Both current and upcoming bulletins available - comparing them")
+
+            # Scrape and parse current month
+            logger.info("Step 2a: Scraping current month bulletin...")
+            current_result = self.scraper.scrape_bulletin_by_url(current_url)
+            if not current_result:
+                logger.warning("Failed to scrape current bulletin, falling back to upcoming only")
+                self._scrape_and_save_single_bulletin(upcoming_url)
+                return
+
+            current_url, current_html = current_result
+            current_data = self.parser.parse_bulletin(current_html)
+            logger.info(f"Parsed current bulletin: {current_data.get('bulletin_date')}")
+
+            # Scrape and parse upcoming month
+            logger.info("Step 2b: Scraping upcoming month bulletin...")
+            upcoming_result = self.scraper.scrape_bulletin_by_url(upcoming_url)
+            if not upcoming_result:
+                logger.warning("Failed to scrape upcoming bulletin, saving current only")
+                self._save_bulletin_and_complete(current_data)
+                return
+
+            upcoming_url, upcoming_html = upcoming_result
+            upcoming_data = self.parser.parse_bulletin(upcoming_html)
+            logger.info(f"Parsed upcoming bulletin: {upcoming_data.get('bulletin_date')}")
+
+            # Step 3: Compare bulletins
+            logger.info("Step 3: Comparing current and upcoming bulletins...")
+            comparison_result = self.comparator.compare_bulletins(current_data, upcoming_data)
+
+            if comparison_result['has_changes']:
+                logger.info(f"CHANGES DETECTED: {len(comparison_result['changes'])} changes found")
+                for change in comparison_result['changes']:
+                    logger.info(f"  {change}")
+
+                # Step 4: Send notification
+                logger.info("Step 4: Sending notification...")
+                self._send_notification(comparison_result)
+            else:
+                logger.info("No changes detected between current and upcoming bulletins")
+                logger.info("Step 4: No changes to notify")
+
+            # Step 5: Save both bulletins
+            logger.info("Step 5: Updating storage...")
+            self.storage.add_bulletin(current_data)
+            logger.info(f"Saved current bulletin: {current_data.get('bulletin_date')}")
+
+            self._save_bulletin_and_complete(upcoming_data)
+
+        else:
+            # Only one bulletin available, save it without comparison
+            available_url = upcoming_url or current_url
+            logger.info(f"Only one bulletin available, saving without comparison")
+            self._scrape_and_save_single_bulletin(available_url)
+
+    def _handle_regular_run(self):
+        """
+        Handle regular run by scraping latest bulletin and comparing with history.
+        """
         # Step 1: Scrape the bulletin
         logger.info("Step 1: Scraping visa bulletin...")
         scrape_result = self.scraper.scrape_latest_bulletin()
@@ -121,43 +210,58 @@ class VisaBulletinOrchestrator:
         logger.info("Step 3: Comparing with previous bulletin...")
         previous_bulletin = self.storage.get_latest_bulletin()
 
-        comparison_result = None
-        if previous_bulletin:
-            comparison_result = self.comparator.compare_bulletins(previous_bulletin, parsed_data)
+        comparison_result = self.comparator.compare_bulletins(previous_bulletin, parsed_data)
 
-            if comparison_result['has_changes']:
-                logger.info(f"CHANGES DETECTED: {len(comparison_result['changes'])} changes found")
-                for change in comparison_result['changes']:
-                    logger.info(f"  {change}")
-            else:
-                logger.info("No changes detected from previous bulletin")
-        else:
-            logger.info("No previous bulletin found (first run)")
+        if comparison_result['has_changes']:
+            logger.info(f"CHANGES DETECTED: {len(comparison_result['changes'])} changes found")
+            for change in comparison_result['changes']:
+                logger.info(f"  {change}")
 
-        # Step 4: Send notification if changes detected
-        if comparison_result and comparison_result['has_changes']:
+            # Step 4: Send notification
             logger.info("Step 4: Sending notification...")
-            notification_message = self.comparator.format_changes_for_notification(comparison_result)
-
-            if self.notifier:
-                success = False
-                if self.notification_method == 'email':
-                    success = self.notifier.send_visa_update(notification_message)
-                elif self.notification_method == 'sms':
-                    success = self.notifier.send_sms(notification_message)
-
-                if success:
-                    logger.info(f"Notification sent successfully via {self.notification_method}")
-                else:
-                    logger.error(f"Failed to send notification via {self.notification_method}")
-            else:
-                logger.warning("Notifier not configured. Would have sent:")
-                logger.info(notification_message)
+            self._send_notification(comparison_result)
         else:
+            logger.info("No changes detected from previous bulletin")
             logger.info("Step 4: No changes to notify")
 
         # Step 5: Update storage
         logger.info("Step 5: Updating storage...")
+        self._save_bulletin_and_complete(parsed_data)
+
+    def _scrape_and_save_single_bulletin(self, url: str):
+        """Helper to scrape and save a single bulletin."""
+        result = self.scraper.scrape_bulletin_by_url(url)
+        if not result:
+            logger.error("Failed to scrape bulletin")
+            return
+
+        bulletin_url, html_content = result
+        parsed_data = self.parser.parse_bulletin(html_content)
+        logger.info(f"Parsed bulletin for: {parsed_data.get('bulletin_date')}")
+
+        self._save_bulletin_and_complete(parsed_data)
+
+    def _send_notification(self, comparison_result):
+        """Helper to send notification."""
+        notification_message = self.comparator.format_changes_for_notification(comparison_result)
+
+        if self.notifier:
+            success = False
+            if self.notification_method == 'email':
+                success = self.notifier.send_visa_update(notification_message)
+            elif self.notification_method == 'sms':
+                success = self.notifier.send_sms(notification_message)
+
+            if success:
+                logger.info(f"Notification sent successfully via {self.notification_method}")
+            else:
+                logger.error(f"Failed to send notification via {self.notification_method}")
+        else:
+            logger.warning("Notifier not configured. Would have sent:")
+            logger.info(notification_message)
+
+    def _save_bulletin_and_complete(self, parsed_data):
+        """Helper to save bulletin and mark as completed."""
         self.storage.add_bulletin(parsed_data)
 
         # Mark this month as completed
@@ -165,9 +269,6 @@ class VisaBulletinOrchestrator:
         if bulletin_month:
             self.storage.mark_monthly_scrape_completed(bulletin_month)
             logger.info(f"Marked month {bulletin_month} as completed")
-
-        logger.info("Scrape cycle completed successfully")
-        logger.info("=" * 60)
 
     def test_notification(self):
         """Send a test notification to verify configuration"""

@@ -117,7 +117,8 @@ def main():
 
         scheduler = VisaScraperSchedulerCron(
             scrape_callback=orchestrator.run_scrape_cycle,
-            timezone=config.TIMEZONE
+            timezone=config.TIMEZONE,
+            storage=orchestrator.storage
         )
 
         try:

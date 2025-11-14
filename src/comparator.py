@@ -74,12 +74,15 @@ class BulletinComparator:
 
             if old_date != new_date:
                 status = self._determine_change_status(old_date, new_date)
+                days_diff = self._calculate_days_difference(old_date, new_date)
+
                 changes.append({
                     'category': category,
                     'table_type': table_type,
                     'old_date': old_date,
                     'new_date': new_date,
-                    'status': status
+                    'status': status,
+                    'days_diff': days_diff
                 })
 
         return changes
@@ -127,11 +130,17 @@ class BulletinComparator:
             return None
 
         # Common format: 01JAN2020, 15FEB2021
-        match = re.match(r'(\d{1,2})([A-Z]{3})(\d{4})', date_str.upper())
+        match = re.match(r'(\d{1,2})([A-Z]{3})(\d{2,4})', date_str.upper())
         if match:
             day = int(match.group(1))
             month_str = match.group(2)
-            year = int(match.group(3))
+            year_str = match.group(3)
+
+            # Handle 2-digit year (e.g., "22" -> "2022")
+            if len(year_str) == 2:
+                year = 2000 + int(year_str)
+            else:
+                year = int(year_str)
 
             try:
                 date_obj = datetime.strptime(f"{day} {month_str} {year}", "%d %b %Y")
@@ -139,6 +148,26 @@ class BulletinComparator:
             except ValueError:
                 logger.warning(f"Could not parse date: {date_str}")
                 return None
+
+        return None
+
+    def _calculate_days_difference(self, old_date: str, new_date: str) -> Optional[int]:
+        """
+        Calculate the difference in days between two priority dates.
+
+        Args:
+            old_date: Old date string
+            new_date: New date string
+
+        Returns:
+            int: Positive for forward movement, negative for retrogression, None if can't calculate
+        """
+        old_parsed = self._parse_priority_date(old_date)
+        new_parsed = self._parse_priority_date(new_date)
+
+        if old_parsed and new_parsed:
+            diff = (new_parsed - old_parsed).days
+            return diff
 
         return None
 
@@ -192,16 +221,27 @@ class BulletinComparator:
         old_date = change['old_date']
         new_date = change['new_date']
         status = change['status']
+        days_diff = change.get('days_diff')
 
-        # Status emoji/indicator
+        # Status emoji/indicator with days
         if status == 'advanced':
-            indicator = "📈 前进"
+            if days_diff:
+                indicator = f"📈 前进 {days_diff}天"
+            else:
+                indicator = "📈 前进"
         elif status == 'retrogressed':
-            indicator = "📉 倒退"
+            if days_diff:
+                indicator = f"📉 倒退 {abs(days_diff)}天"
+            else:
+                indicator = "📉 倒退"
         elif status == 'became_current':
             indicator = "✅ 有名额"
         elif status == 'became_unavailable':
             indicator = "❌ 无名额"
+        elif status == 'retrogressed_from_current':
+            indicator = "📉 从有名额变为排期"
+        elif status == 'became_available':
+            indicator = "📈 从无名额变为有排期"
         else:
             indicator = "🔄 变化"
 
