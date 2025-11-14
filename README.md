@@ -15,10 +15,18 @@
 - 月度管理：当月抓取成功后自动停止，下月重新激活
 - JSON 文件存储历史数据，易于查看和备份
 
+## 文档
+
+- **README.md** - 项目介绍、功能特点和使用方法（本文件）
+- **QUICKSTART.md** - 5 分钟快速设置指南
+- **UBUNTU_DEPLOYMENT.md** - Ubuntu 24.04 Server 部署指南
+- **CLAUDE.md** - 项目架构和开发指南（AI 辅助开发参考）
+- **GMAIL_SETUP.md** - Gmail 邮件通知配置教程
+
 ## 目录结构
 
 ```
-uswait/
+visa-bulletin-monitor/
 ├── main.py                 # 主程序入口
 ├── config.py              # 配置文件
 ├── requirements.txt       # Python 依赖
@@ -259,7 +267,7 @@ Email 通知采用美观的 HTML 格式，包含：
 
 ```batch
 @echo off
-cd C:\work\claudecode\uswait
+cd /path/to/visa-bulletin-monitor
 python main.py --mode schedule
 pause
 ```
@@ -271,7 +279,7 @@ pause
 1. 打开"任务计划程序"
 2. 创建基本任务
 3. 设置触发器为"计算机启动时"
-4. 操作：启动程序 `python.exe`，参数：`main.py --mode schedule`，起始于：`C:\work\claudecode\uswait`
+4. 操作：启动程序 `python.exe`，参数：`main.py --mode schedule`，起始于：项目目录路径
 
 ### 2. 程序没有发送通知怎么办？
 

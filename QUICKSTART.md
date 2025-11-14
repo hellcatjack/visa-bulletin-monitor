@@ -7,7 +7,7 @@
 打开命令行（CMD 或 PowerShell），进入项目目录：
 
 ```bash
-cd C:\work\claudecode\uswait
+cd /path/to/visa-bulletin-monitor
 pip install -r requirements.txt
 ```
 
@@ -115,7 +115,7 @@ python main.py --mode schedule
 3. 名称：`Visa Bulletin Monitor`
 4. 触发器：选择"计算机启动时"
 5. 操作：选择"启动程序"
-   - 程序：`C:\work\claudecode\uswait\start.bat`
+   - 程序：`/path/to/visa-bulletin-monitor/start.bat`
 6. 完成
 
 ### 方法 2: 添加到启动文件夹

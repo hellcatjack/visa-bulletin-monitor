@@ -4,11 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=YOUR_USERNAME
-Group=YOUR_USERNAME
-WorkingDirectory=/path/to/uswait
-Environment="PATH=/usr/bin:/usr/local/bin"
-ExecStart=/usr/bin/python3 /path/to/uswait/main.py --mode schedule
+User=visa-monitor
+Group=visa-monitor
+WorkingDirectory=/opt/visa-bulletin-monitor
+Environment="PATH=/opt/visa-bulletin-monitor/.venv/bin:/usr/bin:/usr/local/bin"
+ExecStart=/opt/visa-bulletin-monitor/.venv/bin/python3 /opt/visa-bulletin-monitor/main.py --mode schedule
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -18,9 +18,7 @@ SyslogIdentifier=visa-monitor
 # Security settings
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/path/to/uswait/data /path/to/uswait/logs
+ProtectSystem=full
 
 [Install]
 WantedBy=multi-user.target
