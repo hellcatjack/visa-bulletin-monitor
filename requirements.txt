@@ -1,0 +1,7 @@
+requests==2.31.0
+beautifulsoup4==4.12.3
+twilio==9.0.4
+APScheduler==3.10.4
+pytz==2024.1
+python-dateutil==2.8.2
+python-dotenv==1.0.1
