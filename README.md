@@ -56,7 +56,8 @@ python --version
 ### 2. 克隆或下载项目
 
 ```bash
-cd C:\work\claudecode\uswait
+git clone https://github.com/hellcatjack/visa-bulletin-monitor.git
+cd visa-bulletin-monitor
 ```
 
 ### 3. 安装依赖
