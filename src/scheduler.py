@@ -147,7 +147,7 @@ class VisaScraperSchedulerCron:
                     next_month_num = 1
                     next_year += 1
 
-                next_month_start = datetime(next_year, next_month_num, 1, 9, 0, 0, tzinfo=self.timezone)
+                next_month_start = self.timezone.localize(datetime(next_year, next_month_num, 1, 9, 0, 0))
 
                 logger.info(
                     f"Monthly task already completed. Waiting until {next_month_start.strftime('%Y-%m-%d %H:%M %Z')}"
@@ -196,7 +196,7 @@ class VisaScraperSchedulerCron:
             next_month_num = 1
             next_year += 1
 
-        next_month_start = datetime(next_year, next_month_num, 1, 9, 0, 0, tzinfo=self.timezone)
+        next_month_start = self.timezone.localize(datetime(next_year, next_month_num, 1, 9, 0, 0))
 
         logger.info("=" * 60)
         logger.info("Monthly task completed! Rescheduling to next month...")
