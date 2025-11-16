@@ -255,11 +255,11 @@ class BulletinComparator:
         return date_str
 
     def _format_bulletin_month(self, bulletin_str: Optional[str]) -> str:
-        """Format bulletin month (YYYY-MM) into yyyy/mm/dd (use first day)."""
+        """Format bulletin month (YYYY-MM) into yyyy/mm for notifications."""
         if not bulletin_str:
             return "Unknown"
         try:
             date_obj = datetime.strptime(bulletin_str, "%Y-%m")
-            return date_obj.strftime("%Y/%m/%d")
+            return date_obj.strftime("%Y/%m")
         except ValueError:
             return bulletin_str
