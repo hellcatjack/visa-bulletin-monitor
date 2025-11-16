@@ -188,8 +188,8 @@ class BulletinComparator:
         lines.append("美国签证排期更新 (中国大陆)")
         lines.append("=" * 30)
 
-        prev_bulletin = comparison_result.get('previous_bulletin', 'Unknown')
-        curr_bulletin = comparison_result.get('current_bulletin', 'Unknown')
+        prev_bulletin = self._format_bulletin_month(comparison_result.get('previous_bulletin'))
+        curr_bulletin = self._format_bulletin_month(comparison_result.get('current_bulletin'))
         lines.append(f"上期: {prev_bulletin} → 本期: {curr_bulletin}")
         lines.append("")
 
@@ -211,15 +211,15 @@ class BulletinComparator:
                 lines.append(line)
             lines.append("")
 
-        lines.append(f"检测时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"检测时间: {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}")
 
         return "\n".join(lines)
 
     def _format_single_change(self, change: Dict) -> str:
         """Format a single change into a readable line"""
         category = change['category']
-        old_date = change['old_date']
-        new_date = change['new_date']
+        old_date = self._format_priority_date(change['old_date'])
+        new_date = self._format_priority_date(change['new_date'])
         status = change['status']
         days_diff = change.get('days_diff')
 
@@ -246,3 +246,20 @@ class BulletinComparator:
             indicator = "🔄 变化"
 
         return f"  {category}: {old_date} → {new_date} ({indicator})"
+
+    def _format_priority_date(self, date_str: str) -> str:
+        """Convert raw priority date to yyyy/mm/dd when possible."""
+        parsed = self._parse_priority_date(date_str)
+        if parsed:
+            return parsed.strftime("%Y/%m/%d")
+        return date_str
+
+    def _format_bulletin_month(self, bulletin_str: Optional[str]) -> str:
+        """Format bulletin month (YYYY-MM) into yyyy/mm/dd (use first day)."""
+        if not bulletin_str:
+            return "Unknown"
+        try:
+            date_obj = datetime.strptime(bulletin_str, "%Y-%m")
+            return date_obj.strftime("%Y/%m/%d")
+        except ValueError:
+            return bulletin_str

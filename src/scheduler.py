@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -23,6 +23,7 @@ class VisaScraperScheduler:
         self.timezone = pytz.timezone(timezone)
         self.interval_minutes = interval_minutes
         self.scheduler = BlockingScheduler(timezone=self.timezone)
+        self.pause_until = None
 
     def is_business_hours(self) -> bool:
         """
@@ -119,17 +120,24 @@ class VisaScraperSchedulerCron:
         self.timezone = pytz.timezone(timezone)
         self.storage = storage
         self.scheduler = BlockingScheduler(timezone=self.timezone)
+        self.pause_until = None
 
     def wrapped_scrape_callback(self):
         """
         Wrapper that checks if monthly task is completed before calling scrape callback.
         If we've already found next month's bulletin, reschedule to next month.
         """
+        now = datetime.now(self.timezone)
+        if self.pause_until and now < self.pause_until:
+            logger.warning(
+                f"Previous失败触发了临时退避，{self.pause_until.strftime('%Y-%m-%d %H:%M:%S %Z')} 前不再尝试抓取"
+            )
+            return
+
         if self.storage:
             # Check BEFORE execution if we should skip
             if not self.storage.should_scrape_this_month():
                 # Calculate when next month starts
-                now = datetime.now(self.timezone)
                 year = now.year
                 month = now.month
 
@@ -141,7 +149,11 @@ class VisaScraperSchedulerCron:
 
                 next_month_start = datetime(next_year, next_month_num, 1, 9, 0, 0, tzinfo=self.timezone)
 
-                logger.info(f"Monthly task already completed. Waiting until {next_month_start.strftime('%Y-%m-%d %H:%M %Z')}")
+                logger.info(
+                    f"Monthly task already completed. Waiting until {next_month_start.strftime('%Y-%m-%d %H:%M %Z')}"
+                )
+                state = self.storage.load_state()
+                logger.info(f"当前状态: {state}")
                 return
 
         # Store state before execution
@@ -153,7 +165,13 @@ class VisaScraperSchedulerCron:
             self.scrape_callback()
         except Exception as e:
             logger.error(f"Error in scrape callback: {e}", exc_info=True)
+            self.pause_until = now + timedelta(minutes=15)
+            logger.warning(
+                f"将暂停抓取 15 分钟，预计恢复时间 {self.pause_until.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+            )
             return
+        else:
+            self.pause_until = None
 
         # Check AFTER execution if state changed to completed
         if self.storage:
@@ -240,7 +258,9 @@ class VisaScraperSchedulerCron:
             trigger=cron_trigger,
             id='visa_scraper_cron',
             name='Visa Bulletin Scraper (Cron)',
-            max_instances=1
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300
         )
 
         logger.info("Regular schedule resumed: every 15 minutes, Mon-Fri, 9 AM - 11 PM")
@@ -275,7 +295,9 @@ class VisaScraperSchedulerCron:
                 trigger=cron_trigger,
                 id='visa_scraper_cron',
                 name='Visa Bulletin Scraper (Cron)',
-                max_instances=1
+                max_instances=1,
+                coalesce=True,
+                misfire_grace_time=300
             )
 
         # Show next few run times

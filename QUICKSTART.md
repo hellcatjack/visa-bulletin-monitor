@@ -88,7 +88,7 @@ python main.py --mode schedule
 
 | 操作 | 批处理文件 | 命令行 |
 |------|-----------|--------|
-| 测试短信 | 双击 `test.bat` | `python main.py --mode test` |
+| 测试通知 | 双击 `test.bat` | `python main.py --mode test` |
 | 查看状态 | 双击 `status.bat` | `python main.py --mode status` |
 | 启动监控 | 双击 `start.bat` | `python main.py --mode schedule` |
 | 手动抓取一次 | - | `python main.py --mode once` |

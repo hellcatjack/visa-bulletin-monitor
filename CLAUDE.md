@@ -39,7 +39,7 @@ Before running, copy `.env.example` to `.env` and configure:
 ## Architecture
 
 ### High-Level Flow
-1. **Scheduler** (`scheduler.py`) → triggers scrape every 15 minutes during US Eastern business hours (Mon-Fri, 9 AM - 11 PM)
+1. **Scheduler** (`scheduler.py`) → triggers scrape every 15 minutes during US Eastern business hours (Mon-Fri, 9 AM - 11 PM) with failure退避（连续抓取异常会暂停 15 分钟）和 misfire 保护
 2. **Orchestrator** (`orchestrator.py`) → coordinates the scrape cycle:
    - Checks monthly scrape status (prevents duplicate notifications)
    - Scrapes latest bulletin

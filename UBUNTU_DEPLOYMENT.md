@@ -189,6 +189,8 @@ ReadWritePaths=/opt/visa-bulletin-monitor/data /opt/visa-bulletin-monitor/logs
 WantedBy=multi-user.target
 ```
 
+> 注意：`--mode schedule` 会启动内置的 cron 调度器，默认在美东工作日 09:00-23:00 每 15 分钟抓取；若抓取失败会自动退避 15 分钟，成功发现下一月公告后会暂停至下月 1 日 09:00 再恢复。
+
 **重要修改点：**
 - `User` 和 `Group`: 改为您创建的用户名（默认 `visa-monitor`）
 - `WorkingDirectory`: 改为您的应用实际路径（默认 `/opt/visa-bulletin-monitor`）
