@@ -3,6 +3,8 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import re
 
+from .time_utils import now_in_project_timezone
+
 logger = logging.getLogger(__name__)
 
 
@@ -211,7 +213,8 @@ class BulletinComparator:
                 lines.append(line)
             lines.append("")
 
-        lines.append(f"检测时间: {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}")
+        detection_time = now_in_project_timezone().strftime('%Y/%m/%d %H:%M:%S %Z')
+        lines.append(f"检测时间: {detection_time}")
 
         return "\n".join(lines)
 

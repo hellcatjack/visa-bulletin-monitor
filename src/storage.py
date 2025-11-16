@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from typing import Dict, List, Optional
-from datetime import datetime
+from .time_utils import now_in_project_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -172,11 +172,11 @@ class JSONStorage:
             bool: True if state updated successfully
         """
         state = self.load_state()
-        state['last_successful_scrape'] = datetime.now().isoformat()
+        state['last_successful_scrape'] = now_in_project_timezone().isoformat()
         state['last_bulletin_month'] = bulletin_month
 
         # Calculate next month
-        now = datetime.now()
+        now = now_in_project_timezone()
         year = now.year
         month = now.month
 
@@ -219,7 +219,7 @@ class JSONStorage:
             return True
 
         # Calculate next month
-        now = datetime.now()
+        now = now_in_project_timezone()
         year = now.year
         month = now.month
 

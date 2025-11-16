@@ -4,6 +4,8 @@ import logging
 from typing import Dict, List, Optional
 from datetime import datetime
 
+from .time_utils import now_in_project_timezone
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,7 +113,7 @@ class VisaBulletinParser:
 
         return {
             'bulletin_date': bulletin_date,
-            'scrape_timestamp': datetime.now().isoformat(),
+            'scrape_timestamp': now_in_project_timezone().isoformat(),
             'final_action_dates': final_action_dates,
             'filing_dates': filing_dates,
             'raw_tables': raw_tables
